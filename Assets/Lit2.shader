@@ -192,12 +192,16 @@
             float _RimPow;
             float3 _RimColor;
 
-            sampler2D _GrabTexture;
+            //sampler2D _GrabTexture;
             sampler2D _VertexAniTex;
 
             float _VertAmount;
             float _VertMoveSpeedX;
             float _VertMoveSpeedY;
+
+            TEXTURE2D(_GrabTexture);
+            SAMPLER(sampler_GrabTexture);
+            float4 _GrabTexture_ST;
 
             struct Attributes
             {
@@ -233,6 +237,8 @@
                 #endif
 
                 float2 uvAlpha : TEXCOORD8;
+
+                float2 uvGrab : TEXCOORD9;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
                 UNITY_VERTEX_OUTPUT_STEREO
             };
@@ -288,6 +294,7 @@
 
                 o.uv = TRANSFORM_TEX(v.texcoord, _BaseMap);
                 o.uvAlpha = TRANSFORM_TEX(v.texcoord, _AlphaMap);
+                o.uvGrab =  TRANSFORM_TEX(v.texcoord, _GrabTexture);
 
                 o.positionWS = vertexInput.positionWS;
 
@@ -317,6 +324,7 @@
                     o.shadowCoord = GetShadowCoord(vertexInput);
                 #endif
 
+
                 return o;
             }
 
@@ -336,13 +344,16 @@
                 //float4 BaseColor = tex2D(_BaseMap, UVAnimation) * _BaseColor;
                 float4 BaseColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, UVAnimation);
                 
-                float4 screenPos = ComputeScreenPos(i.positionCS);
+                //float4 screenPos = ComputeScreenPos(i.positionCS);
             
-                float2 cameraUV = screenPos.xy / screenPos.w;
+                //float2 cameraUV = screenPos.xy / screenPos.w;
+                float2 cameraUV = i.uvGrab;
 
-                // float3 GrabRender = tex2D(_GrabTexture, cameraUV);
-                // float3 GrabRenderDistort = tex2D(_GrabTexture, cameraUV + NormalFinal * 0.1);
-
+                float3 GrabRender = SAMPLE_TEXTURE2D(_GrabTexture, sampler_GrabTexture, cameraUV);
+                float3 GrabRenderDistort = SAMPLE_TEXTURE2D(_GrabTexture, sampler_GrabTexture, cameraUV + NormalFinal * 0.1);
+                // if (1) {
+                //     return float4(GrabRender.rgb,  1);
+                // }
                 float NdotV = saturate(dot(i.viewDirWS, NormalFinal));
                 float3 Specular = (pow((NdotV * _SpecMul), _SpecPow)) * _SpecColor; 
                 float3 RimLight = (pow(((1 - NdotV) * _RimMul), _RimPow)) * _RimColor;
@@ -355,10 +366,10 @@
                 float MaskWorld = MaskHigh * MaskLow;
                 float MaskFinal = MaskWorld * AlphaMap;
 
-                //float3 Albedo = lerp(0, BaseColor.rgb * GrabRenderDistort.rgb, MaskWorld);
-                float3 Albedo = lerp(0, BaseColor.rgb , MaskWorld);
-                //float3 Emission = lerp(GrabRender.rgb, RimLight + Specular, MaskWorld);
-                float3 Emission =  (RimLight + Specular) * MaskWorld;
+                float3 Albedo = lerp(0, BaseColor.rgb * GrabRenderDistort.rgb, MaskWorld);
+                //float3 Albedo = lerp(0, BaseColor.rgb , MaskWorld);
+                float3 Emission =  lerp(GrabRender.rgb, RimLight + Specular, MaskWorld);
+                //float3 Emission =  (RimLight + Specular) * MaskWorld;
 
                 float Alpha = MaskFinal;
 
