@@ -22,7 +22,7 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: Lit2
   m_Shader: {fileID: 4800000, guid: d04f33e7443e68f4e9c76f160ae4d352, type: 3}
-  m_ShaderKeywords: _SPECULAR_SETUP
+  m_ShaderKeywords: _SPECULAR_SETUP, _NORMALMAP
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -77,17 +77,17 @@ Material:
     m_Floats:
     - _AlphaClip: 0
     - _AlphaHigh: 9
-    - _AlphaLow: 0.54
+    - _AlphaLow: 1.83
     - _Blend: 0
     - _BumpScale: 1
     - _Cull: 2
-    - _Cutoff: 0.5
+    - _Cutoff: 0.001
     - _DstBlend: 10
     - _EnvironmentReflections: 1
     - _GlossMapScale: 0
     - _Glossiness: 0
     - _GlossyReflections: 0
-    - _Metallic: 0.9
+    - _Metallic: 0.849
     - _OcclusionStrength: 1
     - _QueueOffset: 0
     - _ReceiveShadows: 1
@@ -95,8 +95,8 @@ Material:
     - _RimPow: 209
     - _Smoothness: 1
     - _SmoothnessTextureChannel: 0
-    - _SpecMul: 1
-    - _SpecPow: 1
+    - _SpecMul: 0.98
+    - _SpecPow: 36
     - _SpecularHighlights: 1
     - _SrcBlend: 5
     - _Surface: 1

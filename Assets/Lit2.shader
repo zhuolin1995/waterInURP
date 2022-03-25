@@ -194,14 +194,14 @@
 
             //sampler2D _GrabTexture;
             sampler2D _VertexAniTex;
-
+            
             float _VertAmount;
             float _VertMoveSpeedX;
             float _VertMoveSpeedY;
 
-            TEXTURE2D(_GrabTexture);
-            SAMPLER(sampler_GrabTexture);
-            float4 _GrabTexture_ST;
+            TEXTURE2D(_GrabPassTransparent);
+            SAMPLER(sampler_GrabPassTransparent);
+            float4 _GrabPassTransparent_ST;
 
             struct Attributes
             {
@@ -227,18 +227,17 @@
                     float4 bitangentWS              : TEXCOORD5;    // xyz: bitangent, w: viewDir.z
                 #else
                     float3 normalWS                 : TEXCOORD3;
-                    float3 viewDirWS                : TEXCOORD4;
                 #endif
+                float3 viewDirWS                : TEXCOORD6; 
 
-                half4 fogFactorAndVertexLight   : TEXCOORD6; // x: fogFactor, yzw: vertex light
+                half4 fogFactorAndVertexLight   : TEXCOORD7; // x: fogFactor, yzw: vertex light
 
                 #if defined(REQUIRES_VERTEX_SHADOW_COORD_INTERPOLATOR)
-                    float4 shadowCoord              : TEXCOORD7;
+                    float4 shadowCoord              : TEXCOORD8;
                 #endif
 
-                float2 uvAlpha : TEXCOORD8;
-
-                float2 uvGrab : TEXCOORD9;
+                float2 uvAlpha : TEXCOORD9;
+                float4 screenPos : TEXCOORD10;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
                 UNITY_VERTEX_OUTPUT_STEREO
             };
@@ -254,8 +253,7 @@
 
                 #ifdef _NORMALMAP
                     half3 viewDirWS = half3(input.normalWS.w, input.tangentWS.w, input.bitangentWS.w);
-                    inputData.normalWS = TransformTangentToWorld(normalTS,
-                        half3x3(input.tangentWS.xyz, input.bitangentWS.xyz, input.normalWS.xyz));
+                    inputData.normalWS = TransformTangentToWorld(normalTS, half3x3(input.tangentWS.xyz, input.bitangentWS.xyz, input.normalWS.xyz));
                 #else
                     half3 viewDirWS = input.viewDirWS;
                     inputData.normalWS = input.normalWS;
@@ -283,18 +281,18 @@
                 Varyings o;
 
                 float3 disp = tex2Dlod(_VertexAniTex, float4(v.texcoord.x + _Time.y * _VertMoveSpeedX, v.texcoord.y + _Time.y * _VertMoveSpeedY, 0, 0));
-                v.positionOS.xyz += v.normalOS * disp.r  * _VertAmount;
+                //v.positionOS.xyz += v.normalOS * disp.r  * _VertAmount;
                 o.positionCS = TransformObjectToHClip(v.positionOS);
 
                 VertexPositionInputs vertexInput = GetVertexPositionInputs(v.positionOS.xyz);
-                VertexNormalInputs normalInput = GetVertexNormalInputs(v.normalOS, v.tangentOS);
+                VertexNormalInputs normalInput = GetVertexNormalInputs(v.normalOS, v.tangentOS); //
                 half3 viewDirWS = GetCameraPositionWS() - vertexInput.positionWS;
                 half3 vertexLight = VertexLighting(vertexInput.positionWS, normalInput.normalWS);
                 half fogFactor = ComputeFogFactor(vertexInput.positionCS.z);
 
                 o.uv = TRANSFORM_TEX(v.texcoord, _BaseMap);
                 o.uvAlpha = TRANSFORM_TEX(v.texcoord, _AlphaMap);
-                o.uvGrab =  TRANSFORM_TEX(v.texcoord, _GrabTexture);
+                //o.uvGrab =  TRANSFORM_TEX(v.texcoord, _GrabTexture);
 
                 o.positionWS = vertexInput.positionWS;
 
@@ -308,8 +306,8 @@
                     o.bitangentWS = half4(normalInput.bitangentWS, viewDirWS.z);
                 #else
                     o.normalWS = NormalizeNormalPerVertex(normalInput.normalWS);
-                    o.viewDirWS = viewDirWS;
                 #endif
+                    o.viewDirWS = viewDirWS;
 
                 OUTPUT_LIGHTMAP_UV(input.lightmapUV, unity_LightmapST, o.lightmapUV);
                 OUTPUT_SH(o.normalWS.xyz, o.vertexSH);
@@ -324,7 +322,8 @@
                     o.shadowCoord = GetShadowCoord(vertexInput);
                 #endif
 
-
+                o.screenPos = ComputeScreenPos(o.positionCS);
+                
                 return o;
             }
 
@@ -334,26 +333,21 @@
                 InitializeStandardLitSurfaceData(i.uv, surfaceData);
 
                 InputData inputData;
-                InitializeInputData(i, surfaceData.normalTS, inputData);
 
-                
                 float2 UVAnimation = float2(i.uv.x + _Time.y * _UVMoveSpeedX, i.uv.y + _Time.y * _UVMoveSpeedY);
                 // float3 NormalFinal = UnpackNormal(tex2D(_BumpMap, UVAnimation)); 
                 float3 NormalFinal = UnpackNormal(SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, UVAnimation)); 
-                
+                InitializeInputData(i, NormalFinal, inputData);
+
                 //float4 BaseColor = tex2D(_BaseMap, UVAnimation) * _BaseColor;
-                float4 BaseColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, UVAnimation);
+                float4 BaseColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, UVAnimation) * _BaseColor ;
                 
                 //float4 screenPos = ComputeScreenPos(i.positionCS);
-            
-                //float2 cameraUV = screenPos.xy / screenPos.w;
-                float2 cameraUV = i.uvGrab;
 
-                float3 GrabRender = SAMPLE_TEXTURE2D(_GrabTexture, sampler_GrabTexture, cameraUV);
-                float3 GrabRenderDistort = SAMPLE_TEXTURE2D(_GrabTexture, sampler_GrabTexture, cameraUV + NormalFinal * 0.1);
-                // if (1) {
-                //     return float4(GrabRender.rgb,  1);
-                // }
+                float2 cameraUV = i.screenPos.xy / i.screenPos.w;
+                float3 GrabRender = SAMPLE_TEXTURE2D(_GrabPassTransparent, sampler_GrabPassTransparent, cameraUV);
+                float3 GrabRenderDistort = SAMPLE_TEXTURE2D(_GrabPassTransparent, sampler_GrabPassTransparent, cameraUV);  //SAMPLE_TEXTURE2D(_GrabTexture, sampler_GrabTexture, cameraUV + NormalFinal * 0.1);
+
                 float NdotV = saturate(dot(i.viewDirWS, NormalFinal));
                 float3 Specular = (pow((NdotV * _SpecMul), _SpecPow)) * _SpecColor; 
                 float3 RimLight = (pow(((1 - NdotV) * _RimMul), _RimPow)) * _RimColor;
@@ -366,9 +360,9 @@
                 float MaskWorld = MaskHigh * MaskLow;
                 float MaskFinal = MaskWorld * AlphaMap;
 
-                float3 Albedo = lerp(0, BaseColor.rgb * GrabRenderDistort.rgb, MaskWorld);
+                float3 Albedo = lerp(0, BaseColor.rgb * GrabRenderDistort.rgb, MaskWorld);; //lerp(0, BaseColor.rgb * GrabRenderDistort.rgb, MaskWorld);
                 //float3 Albedo = lerp(0, BaseColor.rgb , MaskWorld);
-                float3 Emission =  lerp(GrabRender.rgb, RimLight + Specular, MaskWorld);
+                float3 Emission = lerp(GrabRender.rgb, RimLight + Specular, MaskWorld);
                 //float3 Emission =  (RimLight + Specular) * MaskWorld;
 
                 float Alpha = MaskFinal;
@@ -379,10 +373,7 @@
                 // o.Smoothness = _Glossiness;
                 // o.Alpha = MaskFinal;   
 
-                float Occlusion = 0.1;
-
-
-                half4 color = UniversalFragmentPBR(inputData, Albedo, _Metallic, Specular,_Smoothness, Occlusion, Emission, Alpha);
+                half4 color = UniversalFragmentPBR(inputData, Albedo, _Metallic, Specular,_Smoothness, _OcclusionStrength, Emission, Alpha);
 
                 color.rgb = MixFog(color.rgb, inputData.fogCoord);
 

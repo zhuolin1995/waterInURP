@@ -37,11 +37,13 @@
   </PropertyGroup>
   <ItemGroup>
      <Compile Include="Assets\GrabFeature.cs" />
+     <Compile Include="Assets\GrabScreenFeature.cs" />
      <Compile Include="Assets\Scripts\SimpleCameraController.cs" />
      <Compile Include="Assets\TutorialInfo\Scripts\Readme.cs" />
      <None Include="Assets\Lit2.shader" />
      <None Include="Assets\Water_LitInput.hlsl" />
      <None Include="Assets\water tornado.shader" />
+     <None Include="Assets\Lit3.shader" />
      <None Include="Assets\Shader\NewSurfaceShader.shader" />
      <None Include="Assets\Shader\waterTornado.shader" />
     <Reference Include="UnityEngine">
